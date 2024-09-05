@@ -9,7 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-import json_data_manager.data_manager as dm
+import data_manager.data_manager as dm
 
 chrome_options = Options()
 chrome_options.add_argument("--window-size=1920,1080")
@@ -24,9 +24,10 @@ wait = WebDriverWait(driver, timeout=3)
 
 def price_parse():
     logger.info("========== New parse start ==========")
-    data = dm.data_load()
-    for url in data:
+    data = dm.load_data()
+    for url in data["products"]:
         driver.get(url)
+        logger.info(f"Parse {url}")
         try:
             discount_price = (
                 wait.until(
@@ -36,8 +37,9 @@ def price_parse():
                 .strip()
             )
             logger.info(f"Find discount_price: {discount_price}")
-            if data[url] != discount_price:
-                data[url] = discount_price
+            if data["products"][url]["current_price"] != discount_price:
+                data["products"][url]["current_price"] = discount_price
+                dm.upload_data(data)
                 logger.info("discount_price updated")
         except (NoSuchElementException, TimeoutException):
             logger.info("Didnt find discount_price")
@@ -52,15 +54,11 @@ def price_parse():
                     .strip()
                 )
                 logger.info(f"Find normal_price: {normal_price}")
-                if data[url] != normal_price:
-                    data[url] = normal_price
-                    logger.info("normal_price updated")
+                if data["products"][url]["current_price"] != normal_price:
+                    data["products"][url]["current_price"] = normal_price
+                    dm.upload_data(data)
+                    logger.info("Current_price updated.")
             except (NoSuchElementException, TimeoutException):
                 logger.info(f"Any price not found for URL: {url}")
-    dm.data_upload(data)
     driver.quit()
     logger.info("========== End parse ==========")
-
-
-if __name__ == "__main__":
-    price_parse()
